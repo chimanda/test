@@ -8,6 +8,1079 @@
   :root{
     --asphalt:#1B1E20;
     --asphalt-2:#242829;
+    --asphalt-3:#2C3132;
+    --chalk:#F3F1EA;
+    --chalk-dim:#9A9D98;
+    --line:#3A3E3A;
+    --p1:#E4572E; /* Team A */
+    --p2:#F2B705; /* Team A */
+    --p3:#2E6FE4; /* Team B */
+    --p4:#2EA36B; /* Team B */
+    --ball:#F3F1EA;
+    --danger:#C0392B;
+    --good:#2EA36B;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0;padding:0;
+    background:var(--asphalt);
+    color:var(--chalk);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    -webkit-tap-highlight-color:transparent;
+    overscroll-behavior:none;
+  }
+  button,input,select{font-family:inherit;}
+  .wrap{max-width:760px;margin:0 auto;padding:0 0 36px;}
+
+  /* header */
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:14px 16px 10px;border-bottom:1px solid var(--line);
+    gap:10px;
+  }
+  .brand{font-size:15px;color:var(--chalk-dim);white-space:nowrap;}
+  .brand b{color:var(--chalk);}
+  .topright{display:flex;align-items:center;gap:10px;}
+  .clock{
+    font-family:'Arial Narrow',Arial,sans-serif;font-weight:700;font-size:26px;
+    font-variant-numeric:tabular-nums;letter-spacing:.02em;
+  }
+  .iconbtn{
+    background:var(--asphalt-2);border:1px solid var(--line);color:var(--chalk);
+    border-radius:9px;width:38px;height:38px;font-size:16px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .iconbtn:disabled{opacity:.35;}
+  .iconbtn:active:not(:disabled){background:var(--line);}
+
+  .calibrate{
+    display:none;padding:10px 16px;border-bottom:1px solid var(--line);
+    align-items:center;gap:10px;background:var(--asphalt-2);font-size:13px;color:var(--chalk-dim);
+  }
+  .calibrate.open{display:flex;}
+  .calibrate input{
+    width:64px;background:var(--asphalt);border:1px solid var(--line);color:var(--chalk);
+    border-radius:7px;padding:6px 8px;font-size:14px;text-align:center;
+  }
+
+  /* scoreboard */
+  .scoreboard{
+    display:flex;align-items:center;justify-content:center;gap:0;
+    padding:16px 10px;border-bottom:1px solid var(--line);
+  }
+  .teamblock{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0;}
+  .teamdots{display:flex;gap:5px;}
+  .teamdots span{width:10px;height:10px;border-radius:3px;}
+  .teamname{font-size:12px;color:var(--chalk-dim);text-align:center;padding:0 6px;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;}
+  .teamscore{font-family:'Arial Narrow',Arial,sans-serif;font-weight:700;font-size:52px;line-height:1;}
+  .vsblock{display:flex;flex-direction:column;align-items:center;gap:8px;padding:0 14px;flex-shrink:0;}
+  .vsdash{color:var(--chalk-dim);font-size:22px;font-weight:700;}
+  .ballchip{
+    display:flex;align-items:center;gap:6px;background:var(--asphalt-2);border:1px solid var(--line);
+    border-radius:999px;padding:5px 10px;font-size:12px;white-space:nowrap;
+  }
+  .ballchip .dot{width:9px;height:9px;border-radius:50%;background:var(--ball);border:2px solid var(--asphalt);box-shadow:0 0 0 1px var(--chalk-dim);}
+  .ballchip button{
+    background:none;border:none;color:var(--chalk-dim);font-size:11px;text-decoration:underline;
+    cursor:pointer;padding:0;margin-left:2px;
+  }
+
+  /* stage */
+  .stage{position:relative;width:100%;aspect-ratio:3/4;background:#000;overflow:hidden;border-bottom:1px solid var(--line);}
+  video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+  video.mirrored, canvas.mirrored{transform:scaleX(-1);}
+  canvas{position:absolute;inset:0;width:100%;height:100%;}
+  .hint{position:absolute;left:0;right:0;top:10px;display:flex;justify-content:center;pointer-events:none;}
+  .hint span{background:rgba(27,30,32,.85);border:1px solid var(--line);padding:8px 14px;border-radius:999px;font-size:13px;}
+  .camstatus{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    flex-direction:column;gap:12px;padding:24px;text-align:center;background:var(--asphalt);}
+  .camstatus button{background:var(--chalk);color:var(--asphalt);border:none;padding:12px 22px;
+    border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;}
+  .rec-indicator{position:absolute;top:10px;left:12px;display:flex;align-items:center;gap:6px;
+    background:rgba(27,30,32,.85);border:1px solid var(--line);padding:6px 10px;border-radius:999px;font-size:12px;}
+  .rec-dot{width:8px;height:8px;border-radius:50%;background:var(--danger);animation:pulse 1.2s infinite;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+
+  /* controls */
+  .controls{display:flex;gap:8px;padding:12px 16px;flex-wrap:wrap;}
+  .btn{flex:1;min-width:120px;background:var(--asphalt-2);border:1px solid var(--line);color:var(--chalk);
+    padding:12px 12px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;}
+  .btn:active{background:var(--line);}
+  .btn:disabled{opacity:.4;}
+  .btn.primary{background:var(--chalk);color:var(--asphalt);border-color:var(--chalk);}
+  .btn.go{background:var(--good);border-color:var(--good);color:#0d1a12;}
+  .btn.stop{background:var(--danger);border-color:var(--danger);color:#fff;}
+
+  /* team panels */
+  .teams-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:6px 16px;}
+  @media (max-width:480px){.teams-grid{grid-template-columns:1fr;}}
+  .teampanel{background:var(--asphalt-2);border:1px solid var(--line);border-radius:14px;padding:10px;}
+  .teampanel[data-team="0"]{border-top:3px solid var(--p1);}
+  .teampanel[data-team="1"]{border-top:3px solid var(--p3);}
+  .teampanel-head{display:flex;align-items:center;justify-content:space-between;padding:2px 4px 8px;}
+  .teampanel-head .tname{font-size:13px;font-weight:700;}
+  .challengebtn{background:var(--asphalt);border:1px solid var(--line);color:var(--chalk);
+    border-radius:8px;padding:6px 9px;font-size:11px;cursor:pointer;}
+  .challengebtn:disabled{opacity:.4;text-decoration:line-through;}
+  .minicards{display:flex;flex-direction:column;gap:8px;}
+
+  .card{background:var(--asphalt-3);border:1px solid var(--line);border-radius:11px;padding:10px;position:relative;}
+  .card.lost{border-color:var(--danger);}
+  .swatch{width:24px;height:24px;border-radius:7px;display:flex;align-items:center;justify-content:center;
+    font-weight:700;font-size:12px;color:#12140f;flex-shrink:0;}
+  .cardhead{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+  .cardhead input{background:transparent;border:none;color:var(--chalk);font-size:13px;font-weight:600;
+    width:100%;padding:2px 0;border-bottom:1px solid transparent;min-width:0;}
+  .cardhead input:focus{outline:none;border-bottom:1px solid var(--chalk-dim);}
+  .retag{background:transparent;border:1px solid var(--line);color:var(--chalk-dim);border-radius:7px;
+    padding:4px 7px;font-size:10px;cursor:pointer;flex-shrink:0;}
+  .lostflag{font-size:10px;color:var(--danger);margin-bottom:6px;}
+  .speedrow{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;}
+  .speedrow .label{font-size:11px;color:var(--chalk-dim);}
+  .speedrow .value{font-family:'Arial Narrow',Arial,sans-serif;font-size:18px;font-weight:700;}
+  .scoreline{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+  .smallbtn{background:var(--asphalt);border:1px solid var(--line);color:var(--chalk);
+    width:28px;height:28px;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;}
+  .smallbtn:active{background:var(--line);}
+  .score{flex:1;text-align:center;font-family:'Arial Narrow',Arial,sans-serif;font-size:22px;font-weight:700;}
+  .foulrow{display:flex;gap:6px;}
+  select.foulselect{flex:1;background:var(--asphalt);border:1px solid var(--line);color:var(--chalk);
+    font-size:11px;border-radius:8px;padding:6px 4px;min-width:0;}
+  .logfoul{background:var(--asphalt);border:1px solid var(--line);color:var(--chalk);
+    border-radius:8px;padding:6px 9px;font-size:11px;cursor:pointer;white-space:nowrap;}
+
+  /* log */
+  .section{padding:14px 16px 4px;}
+  .section h3{font-size:12px;color:var(--chalk-dim);margin:0 0 10px;font-weight:600;}
+  .log{background:var(--asphalt-2);border:1px solid var(--line);border-radius:12px;max-height:190px;overflow-y:auto;}
+  .logrow{display:flex;gap:10px;padding:9px 12px;font-size:13px;border-bottom:1px solid var(--line);}
+  .logrow:last-child{border-bottom:none;}
+  .logtime{color:var(--chalk-dim);font-variant-numeric:tabular-nums;width:44px;flex-shrink:0;}
+  .logdot{width:8px;height:8px;border-radius:50%;margin-top:4px;flex-shrink:0;}
+  .logempty{padding:16px;text-align:center;color:var(--chalk-dim);font-size:13px;}
+  .footactions{display:flex;gap:8px;padding:14px 16px 4px;}
+
+  /* modals (replay + end of match) */
+  .modal{position:fixed;inset:0;background:rgba(10,11,11,.95);z-index:50;display:none;
+    flex-direction:column;padding:0;}
+  .modal.open{display:flex;}
+  .modalhead{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;flex-shrink:0;}
+  .modalhead .title{font-size:15px;font-weight:700;}
+  .closeBtn{background:var(--asphalt-2);border:1px solid var(--line);color:var(--chalk);
+    width:34px;height:34px;border-radius:9px;font-size:16px;cursor:pointer;}
+
+  .replaystage{position:relative;margin:0 auto;width:100%;max-width:520px;flex:1;min-height:0;
+    display:flex;align-items:center;justify-content:center;padding:0 12px;}
+  .replaybox{position:relative;width:100%;background:#000;border-radius:10px;overflow:hidden;}
+  .replaybox video{display:block;width:100%;height:100%;}
+  .replaybox canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;}
+  .replaycontrols{display:flex;gap:8px;padding:14px 16px 10px;flex-wrap:wrap;flex-shrink:0;}
+  .replaydecision{display:flex;gap:8px;padding:0 16px 16px;flex-shrink:0;}
+  .decisionbtn{flex:1;padding:13px;border-radius:10px;font-size:14px;font-weight:700;border:none;cursor:pointer;}
+  .decisionbtn.success{background:var(--good);color:#0d1a12;}
+  .decisionbtn.fail{background:var(--danger);color:#fff;}
+  .savehint{padding:0 16px 14px;font-size:11px;color:var(--chalk-dim);text-align:center;}
+
+  .endcard{background:var(--asphalt-2);border:1px solid var(--line);border-radius:16px;
+    margin:auto 16px;padding:20px;max-width:480px;width:calc(100% - 32px);max-height:88vh;overflow-y:auto;}
+  .endcard h2{margin:0 0 4px;font-size:20px;}
+  .endcard .sub{color:var(--chalk-dim);font-size:13px;margin-bottom:16px;}
+  .statstable{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px;}
+  .statstable th{text-align:left;color:var(--chalk-dim);font-weight:600;font-size:11px;
+    padding:0 6px 6px;border-bottom:1px solid var(--line);}
+  .statstable td{padding:8px 6px;border-bottom:1px solid var(--line);}
+  .statstable td:not(:first-child), .statstable th:not(:first-child){text-align:center;}
+  .swdot{width:9px;height:9px;border-radius:3px;display:inline-block;margin-right:7px;}
+  .endactions{display:flex;flex-direction:column;gap:8px;}
+  .endactions .row{display:flex;gap:8px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div class="brand"><b>Wall Ball</b> Ref</div>
+    <div class="topright">
+      <div class="clock" id="clock">00:00</div>
+      <button class="iconbtn" id="calibrateBtn" title="Speed calibration">⚙</button>
+      <button class="iconbtn" id="flipCam" title="Flip camera">⟲</button>
+    </div>
+  </div>
+
+  <div class="calibrate" id="calibratePanel">
+    <span>Court width visible on screen</span>
+    <input type="number" id="courtWidth" value="20" min="4" max="200">
+    <span>ft — used to estimate mph</span>
+  </div>
+
+  <div class="scoreboard">
+    <div class="teamblock">
+      <div class="teamdots"><span style="background:var(--p1)"></span><span style="background:var(--p2)"></span></div>
+      <div class="teamscore" id="scoreA">0</div>
+      <div class="teamname" id="nameA">Player 1 &amp; Player 2</div>
+    </div>
+    <div class="vsblock">
+      <div class="vsdash">–</div>
+      <div class="ballchip"><span class="dot"></span><span id="ballSpeed">Ball 0 mph</span><button id="retagBall">re-tag</button></div>
+    </div>
+    <div class="teamblock">
+      <div class="teamdots"><span style="background:var(--p3)"></span><span style="background:var(--p4)"></span></div>
+      <div class="teamscore" id="scoreB">0</div>
+      <div class="teamname" id="nameB">Player 3 &amp; Player 4</div>
+    </div>
+  </div>
+
+  <div class="stage" id="stage">
+    <video id="video" playsinline muted autoplay></video>
+    <canvas id="canvas"></canvas>
+    <div class="hint"><span id="hintText">Starting camera…</span></div>
+    <div class="rec-indicator" id="recIndicator" style="display:none;">
+      <div class="rec-dot"></div><span>REC <span id="recTime">0:00</span></span>
+    </div>
+    <div class="camstatus" id="camStatus">
+      <div style="font-size:15px;color:var(--chalk-dim);max-width:280px;">
+        Point your camera at the court, then tap “Enable camera.” You'll tap each of the 4 players and then the ball once to start tracking.
+      </div>
+      <button id="enableCam">Enable camera</button>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="btn primary" id="retagAll">Select players &amp; ball</button>
+    <button class="btn go" id="matchBtn" disabled>Start match</button>
+    <button class="btn" id="reviewBtn">▶ Review footage</button>
+  </div>
+
+  <div class="teams-grid">
+    <div class="teampanel" data-team="0">
+      <div class="teampanel-head"><span class="tname">Team A</span>
+        <button class="challengebtn" id="challengeA">🚩 Challenge (1)</button></div>
+      <div class="minicards" id="teamACards"></div>
+    </div>
+    <div class="teampanel" data-team="1">
+      <div class="teampanel-head"><span class="tname">Team B</span>
+        <button class="challengebtn" id="challengeB">🚩 Challenge (1)</button></div>
+      <div class="minicards" id="teamBCards"></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>Match log</h3>
+    <div class="log" id="log"><div class="logempty">No events yet — score and foul calls will show up here.</div></div>
+  </div>
+
+  <div class="footactions">
+    <button class="btn" id="exportLog">Export log (.txt)</button>
+    <button class="btn" id="newMatch">New match</button>
+  </div>
+
+</div>
+
+<!-- Replay / challenge modal -->
+<div class="modal" id="replayModal">
+  <div class="modalhead">
+    <div class="title" id="replayTitle">Replay</div>
+    <button class="closeBtn" id="replayClose">✕</button>
+  </div>
+  <div class="replaystage">
+    <div class="replaybox" id="replayBox">
+      <video id="replayVideo" playsinline controls></video>
+      <canvas id="replayCanvas"></canvas>
+    </div>
+  </div>
+  <div class="replaycontrols">
+    <button class="btn" id="toggleOverlay">Hide tracking</button>
+    <button class="btn" id="fullscreenBtn">⛶ Full screen</button>
+    <button class="btn" id="saveReplayBtn">Save to camera roll</button>
+  </div>
+  <div class="replaydecision" id="replayDecision" style="display:none;">
+    <button class="decisionbtn success" id="challengeSuccess">Successful</button>
+    <button class="decisionbtn fail" id="challengeFail">Unsuccessful</button>
+  </div>
+  <div class="savehint">Save opens your share sheet — choose “Save Video” to add it to your camera roll.</div>
+</div>
+
+<!-- End of match modal -->
+<div class="modal" id="endModal">
+  <div class="endcard">
+    <h2 id="endTitle">Match complete</h2>
+    <div class="sub" id="endSub">Final stats</div>
+    <table class="statstable">
+      <thead><tr><th>Player</th><th>Points</th><th>Given up</th></tr></thead>
+      <tbody id="endTableBody"></tbody>
+    </table>
+    <div class="endactions">
+      <div class="row">
+        <button class="btn primary" id="saveEndBtn">Save recording to camera roll</button>
+      </div>
+      <div class="row">
+        <button class="btn" id="closeEndBtn">Close</button>
+        <button class="btn" id="newMatchFromEnd">Start new match</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const TEAM_COLORS = ['#E4572E','#F2B705','#2E6FE4','#2EA36B'];
+  const NAMES = ['Player 1','Player 2','Player 3','Player 4'];
+  const FOULS = ['Fault','Double hit','Out of bounds','Held ball','Line fault'];
+  const WIN_SCORE = 15;
+  const SELECT_ORDER = [0,1,2,3,'ball'];
+
+  const video = document.getElementById('video');
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  const stage = document.getElementById('stage');
+  const hintText = document.getElementById('hintText');
+  const camStatus = document.getElementById('camStatus');
+
+  // ---------- low-res tracking canvas ----------
+  const LW = 120;
+  let LH = 160;
+  const proc = document.createElement('canvas');
+  const procCtx = proc.getContext('2d', {willReadFrequently:true});
+
+  let courtWidthFt = 20;
+  function pxPerSecToMph(px){
+    const ftPerSec = px * (courtWidthFt/LW);
+    return ftPerSec * 0.681818;
+  }
+
+  const players = TEAM_COLORS.map((c,i)=>({
+    id:i, color:c, name:NAMES[i],
+    active:false, lost:false, lostStreak:0,
+    pos:null, template:null, history:[],
+    score:0, fouls:0, pointsAgainst:0, speedMph:0
+  }));
+  const ball = {
+    id:'ball', color:'#F3F1EA', name:'Ball',
+    active:false, lost:false, lostStreak:0,
+    pos:null, template:null, history:[], speedMph:0
+  };
+  const TEAMS = [
+    {name:'Team A', players:[0,1], challengeAvailable:true},
+    {name:'Team B', players:[2,3], challengeAvailable:true}
+  ];
+
+  const PLAYER_OPTS = {tw:9, th:13, search:7, lossThresh:46, lostLimit:18};
+  const BALL_OPTS   = {tw:7, th:7,  search:11, lossThresh:52, lostLimit:10};
+  const HISTORY_CAP = 20000;
+
+  let selecting = null;
+  let stream = null;
+  let running = false;
+  let currentFacing = 'environment';
+  let matchState = 'idle'; // idle | live | ended
+
+  function clamp(v,a,b){return v<a?a:(v>b?b:v);}
+
+  // ---------- camera ----------
+  document.getElementById('enableCam').addEventListener('click', ()=>startCamera(currentFacing));
+  document.getElementById('flipCam').addEventListener('click', ()=>{
+    if(matchState==='live'){ hintText.textContent='End the match before flipping cameras'; return; }
+    startCamera(currentFacing==='environment' ? 'user' : 'environment');
+  });
+
+  async function startCamera(facing){
+    try{
+      if(stream){ stream.getTracks().forEach(t=>t.stop()); }
+      stream = await navigator.mediaDevices.getUserMedia({
+        video:{facingMode:{ideal:facing}, width:{ideal:1280}, height:{ideal:960}},
+        audio:false
+      });
+      currentFacing = facing;
+      video.srcObject = stream;
+      await video.play();
+      const mirrored = currentFacing==='user';
+      video.classList.toggle('mirrored', mirrored);
+      canvas.classList.toggle('mirrored', mirrored);
+      camStatus.style.display = 'none';
+      resizeCanvas();
+      running = true;
+      requestAnimationFrame(loop);
+      if(selecting===null && !players.every(p=>p.active)){
+        selecting = SELECT_ORDER[0];
+        hintText.textContent = 'Tap Player 1 on the video';
+      }
+    }catch(err){
+      hintText.textContent = 'Camera error — check permissions';
+      camStatus.style.display = 'flex';
+      camStatus.querySelector('div').textContent = 'Camera access failed: ' + err.message + '. Check your browser’s camera permission and try again.';
+    }
+  }
+
+  function resizeCanvas(){
+    const rect = stage.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+    LH = Math.round(LW * (video.videoHeight/video.videoWidth || 4/3));
+    proc.width = LW; proc.height = LH;
+  }
+  window.addEventListener('resize', resizeCanvas);
+
+  // ---------- calibration ----------
+  const calibratePanel = document.getElementById('calibratePanel');
+  document.getElementById('calibrateBtn').addEventListener('click', ()=>calibratePanel.classList.toggle('open'));
+  document.getElementById('courtWidth').addEventListener('input', e=>{
+    const v = parseFloat(e.target.value);
+    if(v>0) courtWidthFt = v;
+  });
+
+  // ---------- selection / tagging ----------
+  function labelFor(sel){ return sel==='ball' ? 'the ball' : ('Player '+(sel+1)); }
+  function entityFor(sel){ return sel==='ball' ? ball : players[sel]; }
+
+  document.getElementById('retagAll').addEventListener('click', ()=>{
+    if(matchState==='live'){ hintText.textContent='End the match before re-selecting everyone'; return; }
+    players.forEach(p=>{p.active=false;p.lost=false;p.history=[];});
+    ball.active=false; ball.lost=false; ball.history=[];
+    selecting = SELECT_ORDER[0];
+    hintText.textContent = 'Tap Player 1 on the video';
+    renderPlayers();
+    updateMatchButton();
+  });
+  document.getElementById('retagBall').addEventListener('click', ()=>{
+    selecting = 'ball';
+    hintText.textContent = 'Tap the ball on the video';
+  });
+
+  canvas.addEventListener('click', (e)=>{
+    if(selecting===null || !running) return;
+    const rect = canvas.getBoundingClientRect();
+    const mirrored = canvas.classList.contains('mirrored');
+    const xOnScreen = e.clientX - rect.left;
+    const x = mirrored ? (rect.width - xOnScreen) : xOnScreen;
+    const y = e.clientY - rect.top;
+    const lx = Math.round(x/rect.width*LW);
+    const ly = Math.round(y/rect.height*LH);
+    const opts = selecting==='ball' ? BALL_OPTS : PLAYER_OPTS;
+    tagEntity(entityFor(selecting), lx, ly, opts);
+
+    const idx = SELECT_ORDER.indexOf(selecting);
+    selecting = idx+1 < SELECT_ORDER.length ? SELECT_ORDER[idx+1] : null;
+    if(selecting!==null){
+      hintText.textContent = 'Tap ' + labelFor(selecting) + ' on the video';
+    }else{
+      hintText.textContent = 'Tracking active';
+      setTimeout(()=>{ if(hintText.textContent==='Tracking active') hintText.textContent=''; }, 1800);
+    }
+    updateMatchButton();
+  });
+
+  function tagEntity(e, lx, ly, opts){
+    procCtx.drawImage(video, 0, 0, LW, LH);
+    const data = procCtx.getImageData(0,0,LW,LH).data;
+    e.pos = {x:lx, y:ly};
+    e.template = extractTemplate(data, lx, ly, opts.tw, opts.th);
+    e.active = true;
+    e.lost = false;
+    e.lostStreak = 0;
+    e.history = [{x:lx,y:ly,t:performance.now()}];
+    renderPlayers();
+  }
+
+  function extractTemplate(data, cx, cy, tw, th){
+    const t = new Float32Array(tw*th);
+    let k=0;
+    for(let dy=-Math.floor(th/2); dy<Math.ceil(th/2); dy++){
+      for(let dx=-Math.floor(tw/2); dx<Math.ceil(tw/2); dx++){
+        const x = clamp(cx+dx, 0, LW-1);
+        const y = clamp(cy+dy, 0, LH-1);
+        const idx = (y*LW+x)*4;
+        t[k++] = (data[idx]+data[idx+1]+data[idx+2])/3;
+      }
+    }
+    return t;
+  }
+
+  // ---------- tracking ----------
+  function trackEntity(e, data, now, opts){
+    if(!e.active || !e.pos) return;
+    let best = {sad: Infinity, x:e.pos.x, y:e.pos.y};
+    for(let dy=-opts.search; dy<=opts.search; dy++){
+      for(let dx=-opts.search; dx<=opts.search; dx++){
+        const cx = clamp(e.pos.x+dx, 0, LW-1);
+        const cy = clamp(e.pos.y+dy, 0, LH-1);
+        const cand = extractTemplate(data, cx, cy, opts.tw, opts.th);
+        let sad=0;
+        for(let k=0;k<cand.length;k++) sad += Math.abs(cand[k]-e.template[k]);
+        if(sad<best.sad) best = {sad, x:cx, y:cy};
+      }
+    }
+    const avgDiff = best.sad/(opts.tw*opts.th);
+    if(avgDiff <= opts.lossThresh){
+      e.pos = {x:best.x, y:best.y};
+      const cand = extractTemplate(data, best.x, best.y, opts.tw, opts.th);
+      for(let k=0;k<e.template.length;k++) e.template[k] = e.template[k]*0.88 + cand[k]*0.12;
+      e.lostStreak = 0;
+      e.lost = false;
+      e.history.push({x:best.x, y:best.y, t:now});
+      if(e.history.length>HISTORY_CAP) e.history.shift();
+    }else{
+      e.lostStreak++;
+      if(e.lostStreak>opts.lostLimit) e.lost = true;
+    }
+    const cutoff = now-800;
+    let recent = null;
+    for(let i=e.history.length-1;i>=0;i--){
+      if(e.history[i].t<cutoff){ recent = e.history.slice(i); break; }
+    }
+    if(!recent) recent = e.history;
+    if(recent.length>1){
+      let d=0;
+      for(let i=1;i<recent.length;i++) d += Math.hypot(recent[i].x-recent[i-1].x, recent[i].y-recent[i-1].y);
+      const pxPerSec = d/((now-recent[0].t)/1000 || 1);
+      e.speedMph = pxPerSecToMph(pxPerSec);
+    }else{
+      e.speedMph = 0;
+    }
+  }
+
+  function trackAll(){
+    procCtx.drawImage(video, 0, 0, LW, LH);
+    const data = procCtx.getImageData(0,0,LW,LH).data;
+    const now = performance.now();
+    players.forEach(p=>trackEntity(p, data, now, PLAYER_OPTS));
+    trackEntity(ball, data, now, BALL_OPTS);
+  }
+
+  // ---------- draw ----------
+  function drawEntity(e, isBall){
+    if(!e.active || !e.pos) return;
+    ctx.beginPath();
+    const trail = e.history.slice(-50);
+    trail.forEach((h,i)=>{
+      const cx = h.x/LW*canvas.width, cy = h.y/LH*canvas.height;
+      if(i===0) ctx.moveTo(cx,cy); else ctx.lineTo(cx,cy);
+    });
+    ctx.strokeStyle = e.color+'80';
+    ctx.lineWidth = isBall ? 1.5 : 2;
+    ctx.stroke();
+
+    const cx = e.pos.x/LW*canvas.width, cy = e.pos.y/LH*canvas.height;
+    const r = canvas.width * (isBall ? 0.016 : 0.028);
+    ctx.beginPath();
+    ctx.arc(cx,cy,r,0,Math.PI*2);
+    if(isBall){
+      ctx.fillStyle = e.lost ? 'transparent' : e.color;
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = e.lost ? e.color : '#12140f';
+      if(e.lost) ctx.setLineDash([3,3]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }else{
+      ctx.fillStyle = e.lost ? 'transparent' : e.color;
+      ctx.fill();
+      ctx.lineWidth = e.lost ? 2 : 0;
+      if(e.lost){ ctx.strokeStyle = e.color; ctx.setLineDash([4,4]); ctx.stroke(); ctx.setLineDash([]); }
+      ctx.fillStyle = e.lost ? e.color : '#12140f';
+      ctx.font = 'bold '+(r*1.1)+'px Arial';
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(String(e.id+1), cx, cy+1);
+    }
+  }
+
+  function draw(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    players.forEach(p=>drawEntity(p,false));
+    drawEntity(ball, true);
+  }
+
+  let lastTrackT = 0;
+  function loop(t){
+    if(!running) return;
+    if(!lastTrackT || t-lastTrackT>60){
+      trackAll();
+      renderStats();
+      lastTrackT = t;
+    }
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  // ---------- player cards ----------
+  const teamACards = document.getElementById('teamACards');
+  const teamBCards = document.getElementById('teamBCards');
+
+  function cardHtml(p){
+    return `
+      <div class="card ${p.lost?'lost':''}" data-i="${p.id}">
+        <div class="cardhead">
+          <div class="swatch" style="background:${p.color}">${p.id+1}</div>
+          <input value="${p.name}" data-name="${p.id}" maxlength="16">
+          <button class="retag" data-retag="${p.id}">re-tag</button>
+        </div>
+        ${p.lost ? '<div class="lostflag">Tracking lost — re-tag to fix</div>' : ''}
+        <div class="speedrow"><div class="label">Speed</div><div class="value">${p.speedMph.toFixed(1)} mph</div></div>
+        <div class="scoreline">
+          <button class="smallbtn" data-score="${p.id}" data-delta="-1" ${matchState==='ended'?'disabled':''}>−</button>
+          <div class="score">${p.score}</div>
+          <button class="smallbtn" data-score="${p.id}" data-delta="1" ${matchState==='ended'?'disabled':''}>+</button>
+        </div>
+        <div class="foulrow">
+          <select class="foulselect" data-foulselect="${p.id}">
+            ${FOULS.map(f=>`<option>${f}</option>`).join('')}
+          </select>
+          <button class="logfoul" data-logfoul="${p.id}" ${matchState==='ended'?'disabled':''}>+Foul (${p.fouls})</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderPlayers(){
+    teamACards.innerHTML = TEAMS[0].players.map(i=>cardHtml(players[i])).join('');
+    teamBCards.innerHTML = TEAMS[1].players.map(i=>cardHtml(players[i])).join('');
+    bindPlayerEvents();
+    renderScoreboard();
+  }
+
+  function renderStats(){
+    players.forEach(p=>{
+      const card = document.querySelector(`.card[data-i="${p.id}"]`);
+      if(!card) return;
+      card.classList.toggle('lost', p.lost);
+      const val = card.querySelector('.value');
+      if(val) val.textContent = p.speedMph.toFixed(1)+' mph';
+      const flag = card.querySelector('.lostflag');
+      if(p.lost && !flag){
+        const head = card.querySelector('.cardhead');
+        const div = document.createElement('div');
+        div.className='lostflag'; div.textContent='Tracking lost — re-tag to fix';
+        head.insertAdjacentElement('afterend', div);
+      }else if(!p.lost && flag){
+        flag.remove();
+      }
+    });
+    document.getElementById('ballSpeed').textContent = 'Ball ' + ball.speedMph.toFixed(1) + ' mph';
+  }
+
+  function bindPlayerEvents(){
+    document.querySelectorAll('[data-name]').forEach(inp=>{
+      inp.addEventListener('input', e=>{
+        players[+e.target.dataset.name].name = e.target.value;
+        renderScoreboard();
+      });
+    });
+    document.querySelectorAll('[data-retag]').forEach(btn=>{
+      btn.addEventListener('click', e=>{
+        const i = +e.target.dataset.retag;
+        selecting = i;
+        hintText.textContent = 'Tap Player ' + (i+1) + ' on the video';
+      });
+    });
+    document.querySelectorAll('[data-score]').forEach(btn=>{
+      btn.addEventListener('click', e=>{
+        if(matchState==='ended') return;
+        const i = +e.target.dataset.score, d = +e.target.dataset.delta;
+        const p = players[i];
+        const before = p.score;
+        p.score = Math.max(0, p.score+d);
+        const actualDelta = p.score-before;
+        if(actualDelta!==0){
+          addLog(p, actualDelta>0 ? 'Point' : 'Point removed', p.color);
+          const teamIdx = TEAMS[0].players.includes(i) ? 0 : 1;
+          const oppTeam = teamIdx===0 ? TEAMS[1] : TEAMS[0];
+          oppTeam.players.forEach(oi=>{ players[oi].pointsAgainst = Math.max(0, players[oi].pointsAgainst+actualDelta); });
+        }
+        renderPlayers();
+        if(matchState==='live' && teamScore(teamIdx)>=WIN_SCORE){
+          finalizeMatch(true, teamIdx);
+        }
+      });
+    });
+    document.querySelectorAll('[data-logfoul]').forEach(btn=>{
+      btn.addEventListener('click', e=>{
+        if(matchState==='ended') return;
+        const i = +e.target.dataset.logfoul;
+        const p = players[i];
+        const sel = document.querySelector(`[data-foulselect="${i}"]`);
+        p.fouls++;
+        addLog(p, sel.value, '#C0392B');
+        renderPlayers();
+      });
+    });
+  }
+
+  function teamScore(t){ return TEAMS[t].players.reduce((s,i)=>s+players[i].score,0); }
+
+  function renderScoreboard(){
+    document.getElementById('scoreA').textContent = teamScore(0);
+    document.getElementById('scoreB').textContent = teamScore(1);
+    document.getElementById('nameA').textContent = TEAMS[0].players.map(i=>players[i].name).join(' & ');
+    document.getElementById('nameB').textContent = TEAMS[1].players.map(i=>players[i].name).join(' & ');
+  }
+
+  function updateMatchButton(){
+    const btn = document.getElementById('matchBtn');
+    if(matchState==='live'){
+      btn.textContent = 'End match';
+      btn.classList.remove('go'); btn.classList.add('stop');
+      btn.disabled = false;
+      document.getElementById('retagAll').disabled = true;
+      document.getElementById('flipCam').disabled = true;
+    }else if(matchState==='ended'){
+      btn.textContent = 'Match ended';
+      btn.disabled = true;
+      document.getElementById('retagAll').disabled = false;
+      document.getElementById('flipCam').disabled = false;
+    }else{
+      btn.textContent = 'Start match';
+      btn.classList.add('go'); btn.classList.remove('stop');
+      document.getElementById('retagAll').disabled = false;
+      document.getElementById('flipCam').disabled = false;
+      btn.disabled = !(players.every(p=>p.active) && ball.active);
+    }
+  }
+
+  // ---------- match log ----------
+  let logEntries = [];
+  function addLog(p, label, dotColor){
+    logEntries.unshift({time: clockText(), name: p?p.name:'Match', label, dotColor: dotColor||'#9A9D98'});
+    renderLog();
+  }
+  function renderLog(){
+    if(logEntries.length===0){
+      document.getElementById('log').innerHTML = '<div class="logempty">No events yet — score and foul calls will show up here.</div>';
+      return;
+    }
+    document.getElementById('log').innerHTML = logEntries.map(e=>`
+      <div class="logrow">
+        <div class="logtime">${e.time}</div>
+        <div class="logdot" style="background:${e.dotColor}"></div>
+        <div><b>${e.name}</b> — ${e.label}</div>
+      </div>
+    `).join('');
+  }
+
+  document.getElementById('exportLog').addEventListener('click', ()=>{
+    const lines = logEntries.slice().reverse().map(e=>`${e.time}  ${e.name}  ${e.label}`);
+    const blob = new Blob([lines.join('\n')||'No events logged.'], {type:'text/plain'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'wallball-match-log.txt';
+    a.click();
+  });
+
+  // ---------- match clock ----------
+  let clockRunning=false, clockStart=0, clockElapsed=0;
+  const clockEl = document.getElementById('clock');
+  function resetClock(){
+    clockRunning=false; clockElapsed=0;
+    clockEl.textContent='00:00';
+  }
+  function clockText(){ return clockEl.textContent; }
+  setInterval(()=>{
+    let ms = clockElapsed + (clockRunning ? performance.now()-clockStart : 0);
+    const totalSec = Math.floor(ms/1000);
+    const m = String(Math.floor(totalSec/60)).padStart(2,'0');
+    const s = String(totalSec%60).padStart(2,'0');
+    clockEl.textContent = `${m}:${s}`;
+  }, 250);
+
+  // ---------- recording ----------
+  let mediaRecorder=null, chunks=[], recStart=0, mimeUsed='video/webm', recordingStartPerf=0, finalRecordingBlob=null;
+  const recIndicator = document.getElementById('recIndicator');
+
+  function pickMime(){
+    const opts = ['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'];
+    for(const o of opts){ if(MediaRecorder.isTypeSupported(o)) return o; }
+    return 'video/webm';
+  }
+
+  function startRecording(){
+    chunks=[];
+    const rawStream = new MediaStream(stream.getVideoTracks());
+    mimeUsed = pickMime();
+    mediaRecorder = new MediaRecorder(rawStream, {mimeType:mimeUsed});
+    mediaRecorder.ondataavailable = e=>{ if(e.data.size) chunks.push(e.data); };
+    mediaRecorder.start(1000);
+    recStart = performance.now();
+    recordingStartPerf = recStart;
+    recIndicator.style.display='flex';
+  }
+  function stopRecording(onDone){
+    if(mediaRecorder && mediaRecorder.state==='recording'){
+      mediaRecorder.onstop = ()=>{
+        finalRecordingBlob = new Blob(chunks, {type:mimeUsed});
+        recIndicator.style.display='none';
+        onDone && onDone();
+      };
+      mediaRecorder.stop();
+    }else{
+      onDone && onDone();
+    }
+  }
+  setInterval(()=>{
+    if(mediaRecorder && mediaRecorder.state==='recording'){
+      const s = Math.floor((performance.now()-recStart)/1000);
+      document.getElementById('recTime').textContent = Math.floor(s/60)+':'+String(s%60).padStart(2,'0');
+    }
+  }, 500);
+
+  async function saveBlobToCameraRoll(blob, filename){
+    try{
+      const file = new File([blob], filename, {type:'video/webm'});
+      if(navigator.canShare && navigator.canShare({files:[file]})){
+        await navigator.share({files:[file], title:filename});
+        return;
+      }
+    }catch(err){ /* fall through to download */ }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+  }
+
+  // ---------- start / end match ----------
+  document.getElementById('matchBtn').addEventListener('click', ()=>{
+    if(matchState==='idle'){
+      if(!(players.every(p=>p.active) && ball.active)){
+        hintText.textContent = 'Tag all 4 players and the ball first';
+        return;
+      }
+      matchState = 'live';
+      clockStart = performance.now();
+      clockRunning = true;
+      startRecording();
+      addLog(null, 'Match started', '#9A9D98');
+      updateMatchButton();
+      renderPlayers();
+    }else if(matchState==='live'){
+      finalizeMatch(false, null);
+    }
+  });
+
+  function finalizeMatch(byScore, winningTeamIdx){
+    if(matchState!=='live') return;
+    matchState = 'ended';
+    if(clockRunning){ clockElapsed += performance.now()-clockStart; clockRunning=false; }
+    addLog(null, 'Match ended', '#9A9D98');
+    updateMatchButton();
+    renderPlayers();
+    stopRecording(()=>showEndModal(byScore, winningTeamIdx));
+  }
+
+  // ---------- end of match modal ----------
+  const endModal = document.getElementById('endModal');
+  function showEndModal(byScore, winningTeamIdx){
+    const sA = teamScore(0), sB = teamScore(1);
+    let title, sub;
+    if(byScore && winningTeamIdx!==null){
+      title = TEAMS[winningTeamIdx].name + ' wins!';
+      sub = `Final score ${sA} – ${sB}`;
+    }else{
+      title = 'Match ended';
+      sub = `Final score ${sA} – ${sB}`;
+    }
+    document.getElementById('endTitle').textContent = title;
+    document.getElementById('endSub').textContent = sub;
+    document.getElementById('endTableBody').innerHTML = players.map(p=>`
+      <tr>
+        <td><span class="swdot" style="background:${p.color}"></span>${p.name}</td>
+        <td>${p.score}</td>
+        <td>${p.pointsAgainst}</td>
+      </tr>
+    `).join('');
+    endModal.classList.add('open');
+  }
+  document.getElementById('closeEndBtn').addEventListener('click', ()=>endModal.classList.remove('open'));
+  document.getElementById('saveEndBtn').addEventListener('click', ()=>{
+    if(finalRecordingBlob){
+      saveBlobToCameraRoll(finalRecordingBlob, 'wallball-match-'+Date.now()+'.webm');
+    }
+  });
+  document.getElementById('newMatchFromEnd').addEventListener('click', ()=>{
+    endModal.classList.remove('open');
+    newMatch();
+  });
+
+  function newMatch(){
+    if(matchState!=='ended' && !window.confirm('Reset the current match and all stats?')) return;
+    players.forEach(p=>{
+      p.active=false; p.lost=false; p.lostStreak=0; p.pos=null; p.template=null; p.history=[];
+      p.score=0; p.fouls=0; p.pointsAgainst=0; p.speedMph=0;
+    });
+    ball.active=false; ball.lost=false; ball.lostStreak=0; ball.pos=null; ball.template=null; ball.history=[]; ball.speedMph=0;
+    TEAMS[0].challengeAvailable = true;
+    TEAMS[1].challengeAvailable = true;
+    updateChallengeButtons();
+    logEntries = [];
+    renderLog();
+    matchState = 'idle';
+    chunks = [];
+    finalRecordingBlob = null;
+    resetClock();
+    selecting = SELECT_ORDER[0];
+    hintText.textContent = 'Tap Player 1 on the video';
+    updateMatchButton();
+    renderPlayers();
+  }
+  document.getElementById('newMatch').addEventListener('click', newMatch);
+
+  // ---------- replay / challenge modal ----------
+  const replayModal = document.getElementById('replayModal');
+  const replayVideo = document.getElementById('replayVideo');
+  const replayCanvas = document.getElementById('replayCanvas');
+  const replayCtx = replayCanvas.getContext('2d');
+  const replayBox = document.getElementById('replayBox');
+  const replayDecision = document.getElementById('replayDecision');
+  let showOverlay = true;
+  let activeChallengeTeam = null;
+  let wasClockRunningBeforeModal = false;
+
+  function openReplay(challengeTeamIdx){
+    if(chunks.length===0){ hintText.textContent = 'No footage recorded yet'; return; }
+    activeChallengeTeam = (typeof challengeTeamIdx === 'number') ? challengeTeamIdx : null;
+    if(mediaRecorder && mediaRecorder.state==='recording'){ mediaRecorder.requestData(); }
+    setTimeout(()=>{
+      const blob = new Blob(chunks, {type:mimeUsed});
+      showReplay(blob);
+    }, 180);
+  }
+
+  function showReplay(blob){
+    wasClockRunningBeforeModal = clockRunning;
+    if(clockRunning){ clockElapsed += performance.now()-clockStart; clockRunning=false; }
+    document.getElementById('replayTitle').textContent = activeChallengeTeam!==null ? (TEAMS[activeChallengeTeam].name+' challenge') : 'Replay';
+    replayDecision.style.display = activeChallengeTeam!==null ? 'flex' : 'none';
+    showOverlay = true;
+    document.getElementById('toggleOverlay').textContent = 'Hide tracking';
+    const url = URL.createObjectURL(blob);
+    replayVideo.src = url;
+    replayModal.classList.add('open');
+    replayVideo.play().catch(()=>{});
+  }
+
+  function closeReplay(){
+    replayModal.classList.remove('open');
+    replayVideo.pause();
+    if(replayVideo.src){ URL.revokeObjectURL(replayVideo.src); replayVideo.removeAttribute('src'); replayVideo.load(); }
+    if(wasClockRunningBeforeModal && matchState==='live'){ clockStart = performance.now(); clockRunning = true; }
+    activeChallengeTeam = null;
+  }
+
+  document.getElementById('reviewBtn').addEventListener('click', ()=>openReplay(null));
+  document.getElementById('challengeA').addEventListener('click', ()=>{ if(TEAMS[0].challengeAvailable) openReplay(0); });
+  document.getElementById('challengeB').addEventListener('click', ()=>{ if(TEAMS[1].challengeAvailable) openReplay(1); });
+  document.getElementById('replayClose').addEventListener('click', closeReplay);
+
+  document.getElementById('toggleOverlay').addEventListener('click', (e)=>{
+    showOverlay = !showOverlay;
+    e.target.textContent = showOverlay ? 'Hide tracking' : 'Show tracking';
+    if(!showOverlay) replayCtx.clearRect(0,0,replayCanvas.width,replayCanvas.height);
+  });
+
+  document.getElementById('fullscreenBtn').addEventListener('click', ()=>{
+    if(replayBox.requestFullscreen) replayBox.requestFullscreen();
+    else if(replayBox.webkitRequestFullscreen) replayBox.webkitRequestFullscreen();
+  });
+
+  document.getElementById('saveReplayBtn').addEventListener('click', ()=>{
+    const blob = new Blob(chunks, {type:mimeUsed});
+    saveBlobToCameraRoll(blob, 'wallball-replay-'+Date.now()+'.webm');
+  });
+
+  document.getElementById('challengeSuccess').addEventListener('click', ()=>{
+    if(activeChallengeTeam===null) return;
+    addLog(null, TEAMS[activeChallengeTeam].name+' challenge — successful', players[TEAMS[activeChallengeTeam].players[0]].color);
+    closeReplay();
+  });
+  document.getElementById('challengeFail').addEventListener('click', ()=>{
+    if(activeChallengeTeam===null) return;
+    TEAMS[activeChallengeTeam].challengeAvailable = false;
+    updateChallengeButtons();
+    addLog(null, TEAMS[activeChallengeTeam].name+' challenge — unsuccessful', '#C0392B');
+    closeReplay();
+  });
+
+  function updateChallengeButtons(){
+    const a = document.getElementById('challengeA');
+    const b = document.getElementById('challengeB');
+    a.disabled = !TEAMS[0].challengeAvailable;
+    a.textContent = TEAMS[0].challengeAvailable ? '🚩 Challenge (1)' : 'Challenge used';
+    b.disabled = !TEAMS[1].challengeAvailable;
+    b.textContent = TEAMS[1].challengeAvailable ? '🚩 Challenge (1)' : 'Challenge used';
+  }
+
+  function nearestHistoryPoint(history, targetT){
+    if(!history.length) return null;
+    let lo=0, hi=history.length-1;
+    if(targetT<=history[0].t) return history[0];
+    if(targetT>=history[hi].t) return history[hi];
+    while(lo<hi-1){
+      const mid = (lo+hi)>>1;
+      if(history[mid].t<targetT) lo=mid; else hi=mid;
+    }
+    return (targetT-history[lo].t) < (history[hi].t-targetT) ? history[lo] : history[hi];
+  }
+
+  function sizeReplayCanvas(){
+    const rect = replayVideo.getBoundingClientRect();
+    replayCanvas.width = rect.width;
+    replayCanvas.height = rect.height;
+  }
+  replayVideo.addEventListener('loadedmetadata', ()=>{
+    if(replayVideo.videoWidth && replayVideo.videoHeight){
+      replayBox.style.aspectRatio = replayVideo.videoWidth+' / '+replayVideo.videoHeight;
+    }
+    sizeReplayCanvas();
+  });
+  window.addEventListener('resize', sizeReplayCanvas);
+
+  replayVideo.addEventListener('timeupdate', ()=>{
+    if(!showOverlay){ return; }
+    sizeReplayCanvas();
+    replayCtx.clearRect(0,0,replayCanvas.width,replayCanvas.height);
+    const targetT = recordingStartPerf + replayVideo.currentTime*1000;
+    players.forEach(p=>{
+      const pt = nearestHistoryPoint(p.history, targetT);
+      if(!pt) return;
+      const cx = pt.x/LW*replayCanvas.width, cy = pt.y/LH*replayCanvas.height;
+      const r = replayCanvas.width*0.028;
+      replayCtx.beginPath();
+      replayCtx.arc(cx,cy,r,0,Math.PI*2);
+      replayCtx.fillStyle = p.color;
+      replayCtx.fill();
+      replayCtx.fillStyle = '#12140f';
+      replayCtx.font = 'bold '+(r*1.1)+'px Arial';
+      replayCtx.textAlign='center'; replayCtx.textBaseline='middle';
+      replayCtx.fillText(String(p.id+1), cx, cy+1);
+    });
+    const bp = nearestHistoryPoint(ball.history, targetT);
+    if(bp){
+      const cx = bp.x/LW*replayCanvas.width, cy = bp.y/LH*replayCanvas.height;
+      const r = replayCanvas.width*0.016;
+      replayCtx.beginPath();
+      replayCtx.arc(cx,cy,r,0,Math.PI*2);
+      replayCtx.fillStyle = '#F3F1EA';
+      replayCtx.fill();
+      replayCtx.lineWidth = 2;
+      replayCtx.strokeStyle = '#12140f';
+      replayCtx.stroke();
+    }
+  });
+
+  renderPlayers();
+  updateMatchButton();
+  updateChallengeButtons();
+})();
+</script>
+</body>
+</html><!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>Wall Ball Ref</title>
+<style>
+  :root{
+    --asphalt:#1B1E20;
+    --asphalt-2:#242829;
     --chalk:#F3F1EA;
     --chalk-dim:#9A9D98;
     --line:#3A3E3A;
