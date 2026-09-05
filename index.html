@@ -374,6 +374,7 @@
   let running = false;
   let currentFacing = 'environment';
   let matchState = 'idle'; // idle | live | ended
+  let flipUnavailable = false;
 
   function clamp(v,a,b){return v<a?a:(v>b?b:v);}
 
@@ -381,16 +382,34 @@
   document.getElementById('enableCam').addEventListener('click', ()=>startCamera(currentFacing));
   document.getElementById('flipCam').addEventListener('click', ()=>{
     if(matchState==='live'){ hintText.textContent='End the match before flipping cameras'; return; }
+    if(flipUnavailable){ hintText.textContent='Only one camera was found on this device'; return; }
     startCamera(currentFacing==='environment' ? 'user' : 'environment');
   });
 
+  async function getStreamWithFallback(facing){
+    // Some browsers/devices reject "exact", some reject rapid re-acquisition
+    // right after stopping the previous stream — try a few strategies in order.
+    const attempts = [
+      ()=>navigator.mediaDevices.getUserMedia({video:{facingMode:{exact:facing}, width:{ideal:1280}, height:{ideal:960}}, audio:false}),
+      ()=>navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:facing}, width:{ideal:1280}, height:{ideal:960}}, audio:false}),
+      ()=>navigator.mediaDevices.getUserMedia({video:true, audio:false})
+    ];
+    let lastErr;
+    for(const attempt of attempts){
+      try{ return await attempt(); }catch(err){ lastErr = err; }
+    }
+    throw lastErr;
+  }
+
   async function startCamera(facing){
     try{
-      if(stream){ stream.getTracks().forEach(t=>t.stop()); }
-      stream = await navigator.mediaDevices.getUserMedia({
-        video:{facingMode:{ideal:facing}, width:{ideal:1280}, height:{ideal:960}},
-        audio:false
-      });
+      if(stream){
+        stream.getTracks().forEach(t=>t.stop());
+        video.srcObject = null;
+        stream = null;
+        await new Promise(r=>setTimeout(r, 250)); // let the OS release the camera first
+      }
+      stream = await getStreamWithFallback(facing);
       currentFacing = facing;
       video.srcObject = stream;
       await video.play();
@@ -404,6 +423,17 @@
       if(selecting===null && !players.every(p=>p.active)){
         selecting = SELECT_ORDER[0];
         hintText.textContent = 'Tap Player 1 on the video';
+      }
+      // detect single-camera devices so the flip button can explain itself
+      if(navigator.mediaDevices.enumerateDevices){
+        try{
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          const cams = devices.filter(d=>d.kind==='videoinput');
+          flipUnavailable = cams.length < 2;
+          const flipBtn = document.getElementById('flipCam');
+          flipBtn.disabled = flipUnavailable && matchState!=='live';
+          flipBtn.title = flipUnavailable ? 'Only one camera detected on this device' : 'Flip camera';
+        }catch(e){ /* enumerateDevices can fail before permission fully settles; ignore */ }
       }
     }catch(err){
       hintText.textContent = 'Camera error — check permissions';
@@ -681,9 +711,9 @@
         const before = p.score;
         p.score = Math.max(0, p.score+d);
         const actualDelta = p.score-before;
+        const teamIdx = TEAMS[0].players.includes(i) ? 0 : 1;
         if(actualDelta!==0){
           addLog(p, actualDelta>0 ? 'Point' : 'Point removed', p.color);
-          const teamIdx = TEAMS[0].players.includes(i) ? 0 : 1;
           const oppTeam = teamIdx===0 ? TEAMS[1] : TEAMS[0];
           oppTeam.players.forEach(oi=>{ players[oi].pointsAgainst = Math.max(0, players[oi].pointsAgainst+actualDelta); });
         }
@@ -727,13 +757,17 @@
       btn.textContent = 'Match ended';
       btn.disabled = true;
       document.getElementById('retagAll').disabled = false;
-      document.getElementById('flipCam').disabled = false;
+      if(!flipUnavailable) document.getElementById('flipCam').disabled = false;
     }else{
       btn.textContent = 'Start match';
       btn.classList.add('go'); btn.classList.remove('stop');
       document.getElementById('retagAll').disabled = false;
-      document.getElementById('flipCam').disabled = false;
-      btn.disabled = !(players.every(p=>p.active) && ball.active);
+      if(!flipUnavailable) document.getElementById('flipCam').disabled = false;
+      const allPlayersTagged = players.every(p=>p.active);
+      btn.disabled = !allPlayersTagged;
+      if(!allPlayersTagged && selecting===null){
+        hintText.textContent = 'Tap "Select players & ball" and tag all 4 players to start';
+      }
     }
   }
 
@@ -839,8 +873,8 @@
   // ---------- start / end match ----------
   document.getElementById('matchBtn').addEventListener('click', ()=>{
     if(matchState==='idle'){
-      if(!(players.every(p=>p.active) && ball.active)){
-        hintText.textContent = 'Tag all 4 players and the ball first';
+      if(!players.every(p=>p.active)){
+        hintText.textContent = 'Tag all 4 players first';
         return;
       }
       matchState = 'live';
@@ -1068,635 +1102,6 @@
   renderPlayers();
   updateMatchButton();
   updateChallengeButtons();
-})();
-</script>
-</body>
-</html><!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
-<title>Wall Ball Ref</title>
-<style>
-  :root{
-    --asphalt:#1B1E20;
-    --asphalt-2:#242829;
-    --chalk:#F3F1EA;
-    --chalk-dim:#9A9D98;
-    --line:#3A3E3A;
-    --p1:#E4572E;
-    --p2:#2E6FE4;
-    --p3:#F2B705;
-    --p4:#2EA36B;
-    --danger:#C0392B;
-  }
-  *{box-sizing:border-box;}
-  html,body{
-    margin:0;padding:0;
-    background:var(--asphalt);
-    color:var(--chalk);
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
-    -webkit-tap-highlight-color:transparent;
-    overscroll-behavior:none;
-  }
-  .wrap{max-width:720px;margin:0 auto;padding:0 0 32px;}
-
-  /* header / clock */
-  .topbar{
-    display:flex;align-items:center;justify-content:space-between;
-    padding:14px 16px 10px;
-    border-bottom:1px solid var(--line);
-  }
-  .brand{font-size:15px;letter-spacing:.02em;color:var(--chalk-dim);}
-  .brand b{color:var(--chalk);}
-  .clock{
-    font-family:'Arial Narrow',Arial,sans-serif;
-    font-weight:700;
-    font-size:30px;
-    font-variant-numeric:tabular-nums;
-    letter-spacing:.03em;
-  }
-  .clockrow{display:flex;align-items:center;gap:14px;}
-  .clockbtns{display:flex;gap:6px;}
-  .iconbtn{
-    background:var(--asphalt-2);border:1px solid var(--line);color:var(--chalk);
-    border-radius:8px;padding:7px 10px;font-size:13px;cursor:pointer;
-  }
-  .iconbtn:active{background:var(--line);}
-
-  /* stage */
-  .stage{
-    position:relative;width:100%;aspect-ratio:3/4;background:#000;
-    overflow:hidden;border-bottom:1px solid var(--line);
-  }
-  video{
-    position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
-    transform:scaleX(-1);
-  }
-  canvas{
-    position:absolute;inset:0;width:100%;height:100%;
-    transform:scaleX(-1);
-  }
-  .hint{
-    position:absolute;left:0;right:0;top:10px;
-    display:flex;justify-content:center;pointer-events:none;
-  }
-  .hint span{
-    background:rgba(27,30,32,.82);border:1px solid var(--line);
-    padding:8px 14px;border-radius:999px;font-size:13px;color:var(--chalk);
-  }
-  .camstatus{
-    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-    flex-direction:column;gap:12px;padding:24px;text-align:center;
-    background:var(--asphalt);
-  }
-  .camstatus button{
-    background:var(--chalk);color:var(--asphalt);border:none;
-    padding:12px 22px;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;
-  }
-  .rec-indicator{
-    position:absolute;top:10px;left:12px;display:flex;align-items:center;gap:6px;
-    background:rgba(27,30,32,.82);border:1px solid var(--line);
-    padding:6px 10px;border-radius:999px;font-size:12px;
-  }
-  .rec-dot{width:8px;height:8px;border-radius:50%;background:var(--danger);animation:pulse 1.2s infinite;}
-  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
-
-  /* controls under stage */
-  .controls{display:flex;gap:8px;padding:12px 16px;flex-wrap:wrap;}
-  .btn{
-    flex:1;min-width:120px;
-    background:var(--asphalt-2);border:1px solid var(--line);color:var(--chalk);
-    padding:11px 12px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;
-  }
-  .btn:active{background:var(--line);}
-  .btn.primary{background:var(--chalk);color:var(--asphalt);border-color:var(--chalk);}
-  .btn.rec{background:var(--danger);border-color:var(--danger);color:#fff;}
-
-  /* player cards */
-  .players{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:6px 16px;}
-  .card{
-    background:var(--asphalt-2);border:1px solid var(--line);border-radius:12px;
-    padding:12px;position:relative;
-  }
-  .card.lost{border-color:var(--danger);}
-  .swatch{
-    width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;
-    font-weight:700;font-size:13px;color:#12140f;flex-shrink:0;
-  }
-  .cardhead{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
-  .cardhead input{
-    background:transparent;border:none;color:var(--chalk);font-size:14px;font-weight:600;
-    width:100%;padding:2px 0;border-bottom:1px solid transparent;
-  }
-  .cardhead input:focus{outline:none;border-bottom:1px solid var(--chalk-dim);}
-  .lostflag{font-size:10px;color:var(--danger);letter-spacing:.03em;}
-
-  .statrow{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;}
-  .statrow .label{font-size:11px;color:var(--chalk-dim);letter-spacing:.02em;}
-  .statrow .value{font-family:'Arial Narrow',Arial,sans-serif;font-size:22px;font-weight:700;}
-
-  .scoreline{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
-  .smallbtn{
-    background:var(--asphalt);border:1px solid var(--line);color:var(--chalk);
-    width:30px;height:30px;border-radius:8px;font-size:16px;font-weight:700;cursor:pointer;
-  }
-  .smallbtn:active{background:var(--line);}
-  .score{flex:1;text-align:center;font-family:'Arial Narrow',Arial,sans-serif;font-size:24px;font-weight:700;}
-
-  .foulrow{display:flex;gap:6px;}
-  select.foulselect{
-    flex:1;background:var(--asphalt);border:1px solid var(--line);color:var(--chalk);
-    font-size:12px;border-radius:8px;padding:6px 4px;
-  }
-  .logfoul{
-    background:var(--asphalt);border:1px solid var(--line);color:var(--chalk);
-    border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;
-  }
-  .retag{
-    position:absolute;top:10px;right:10px;font-size:11px;color:var(--chalk-dim);
-    background:transparent;border:1px solid var(--line);border-radius:7px;padding:4px 7px;cursor:pointer;
-  }
-
-  /* log */
-  .section{padding:14px 16px 4px;}
-  .section h3{font-size:12px;letter-spacing:.04em;color:var(--chalk-dim);margin:0 0 10px;font-weight:600;}
-  .log{
-    background:var(--asphalt-2);border:1px solid var(--line);border-radius:12px;
-    max-height:190px;overflow-y:auto;
-  }
-  .logrow{
-    display:flex;gap:10px;padding:9px 12px;font-size:13px;border-bottom:1px solid var(--line);
-  }
-  .logrow:last-child{border-bottom:none;}
-  .logtime{color:var(--chalk-dim);font-variant-numeric:tabular-nums;width:44px;flex-shrink:0;}
-  .logdot{width:8px;height:8px;border-radius:50%;margin-top:4px;flex-shrink:0;}
-  .logempty{padding:16px;text-align:center;color:var(--chalk-dim);font-size:13px;}
-  .footactions{display:flex;gap:8px;padding:14px 16px 4px;}
-</style>
-</head>
-<body>
-<div class="wrap">
-
-  <div class="topbar">
-    <div class="brand"><b>Wall Ball</b> Ref</div>
-    <div class="clockrow">
-      <div class="clock" id="clock">00:00</div>
-      <div class="clockbtns">
-        <button class="iconbtn" id="clockToggle">Start</button>
-        <button class="iconbtn" id="clockReset">Reset</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="stage" id="stage">
-    <video id="video" playsinline muted autoplay></video>
-    <canvas id="canvas"></canvas>
-    <div class="hint"><span id="hintText">Starting camera…</span></div>
-    <div class="rec-indicator" id="recIndicator" style="display:none;">
-      <div class="rec-dot"></div><span>REC <span id="recTime">0:00</span></span>
-    </div>
-    <div class="camstatus" id="camStatus">
-      <div style="font-size:15px;color:var(--chalk-dim);max-width:280px;">
-        Point your camera at the court, then tap “Enable camera.” You’ll tap each of the 4 players once to start tracking them.
-      </div>
-      <button id="enableCam">Enable camera</button>
-    </div>
-  </div>
-
-  <div class="controls">
-    <button class="btn primary" id="retagAll">Select 4 players</button>
-    <button class="btn rec" id="recBtn">● Record replay</button>
-  </div>
-
-  <div class="players" id="players"></div>
-
-  <div class="section">
-    <h3>Match log</h3>
-    <div class="log" id="log"><div class="logempty">No events yet — score and foul calls will show up here.</div></div>
-  </div>
-
-  <div class="footactions">
-    <button class="btn" id="exportLog">Export log (.txt)</button>
-    <button class="btn" id="newMatch">Reset match</button>
-  </div>
-
-</div>
-
-<script>
-(function(){
-  const COLORS = ['#E4572E','#2E6FE4','#F2B705','#2EA36B'];
-  const NAMES = ['Player 1','Player 2','Player 3','Player 4'];
-  const FOULS = ['Fault','Double hit','Out of bounds','Held ball','Line fault'];
-
-  const video = document.getElementById('video');
-  const canvas = document.getElementById('canvas');
-  const ctx = canvas.getContext('2d');
-  const stage = document.getElementById('stage');
-  const hintText = document.getElementById('hintText');
-  const camStatus = document.getElementById('camStatus');
-  const playersEl = document.getElementById('players');
-  const logEl = document.getElementById('log');
-
-  // low-res processing canvas for tracking
-  const LW = 120;
-  let LH = 160;
-  const proc = document.createElement('canvas');
-  const procCtx = proc.getContext('2d', {willReadFrequently:true});
-
-  const TW = 9, TH = 13; // template size in low-res px
-  const SEARCH = 7;      // search radius in low-res px
-  const LOSS_THRESH = 46; // avg abs diff per px above which we consider it unreliable
-  const LOST_LIMIT = 18;  // consecutive bad frames before flagging "lost"
-
-  let players = COLORS.map((c,i)=>({
-    id:i, color:c, name:NAMES[i],
-    active:false, lost:false, lostStreak:0,
-    pos:null, template:null, history:[],
-    score:0, fouls:0, distance:0, speed:0,
-    lastMoveT:0
-  }));
-
-  let selecting = null; // index of player currently being tagged, or null
-  let stream = null;
-  let running = false;
-
-  // ---------- camera ----------
-  document.getElementById('enableCam').addEventListener('click', startCamera);
-
-  async function startCamera(){
-    try{
-      stream = await navigator.mediaDevices.getUserMedia({
-        video:{facingMode:{ideal:'environment'}, width:{ideal:1280}, height:{ideal:960}},
-        audio:false
-      });
-      video.srcObject = stream;
-      await video.play();
-      camStatus.style.display = 'none';
-      resizeCanvas();
-      running = true;
-      requestAnimationFrame(loop);
-      hintText.textContent = 'Tap Player 1 on the video';
-      selecting = 0;
-    }catch(err){
-      hintText.textContent = 'Camera error — check permissions';
-      camStatus.style.display = 'flex';
-      camStatus.querySelector('div').textContent = 'Camera access failed: ' + err.message + '. Check your browser’s camera permission and try again.';
-    }
-  }
-
-  function resizeCanvas(){
-    const rect = stage.getBoundingClientRect();
-    canvas.width = rect.width;
-    canvas.height = rect.height;
-    LH = Math.round(LW * (video.videoHeight/video.videoWidth || 4/3));
-    proc.width = LW; proc.height = LH;
-  }
-  window.addEventListener('resize', resizeCanvas);
-
-  // ---------- selection ----------
-  document.getElementById('retagAll').addEventListener('click', ()=>{
-    players.forEach(p=>{p.active=false;p.lost=false;p.history=[];});
-    selecting = 0;
-    hintText.textContent = 'Tap Player 1 on the video';
-    renderPlayers();
-  });
-
-  canvas.addEventListener('click', (e)=>{
-    if(selecting===null || !running) return;
-    const rect = canvas.getBoundingClientRect();
-    // account for mirrored (scaleX(-1)) display
-    const xOnScreen = e.clientX - rect.left;
-    const x = rect.width - xOnScreen; // unmirror
-    const y = e.clientY - rect.top;
-    const lx = Math.round(x/rect.width*LW);
-    const ly = Math.round(y/rect.height*LH);
-    tagPlayer(selecting, lx, ly);
-    selecting = (selecting+1)<4 ? selecting+1 : null;
-    if(selecting!==null){
-      hintText.textContent = 'Tap Player ' + (selecting+1) + ' on the video';
-    }else{
-      hintText.textContent = 'Tracking active';
-      setTimeout(()=>{ if(hintText.textContent==='Tracking active') hintText.textContent=''; }, 1800);
-    }
-  });
-
-  function tagPlayer(i, lx, ly){
-    procCtx.drawImage(video, 0, 0, LW, LH);
-    const data = procCtx.getImageData(0,0,LW,LH).data;
-    const tmpl = extractTemplate(data, lx, ly);
-    const p = players[i];
-    p.pos = {x:lx, y:ly};
-    p.template = tmpl;
-    p.active = true;
-    p.lost = false;
-    p.lostStreak = 0;
-    p.history = [{x:lx,y:ly}];
-    renderPlayers();
-  }
-
-  function extractTemplate(data, cx, cy){
-    const t = new Float32Array(TW*TH);
-    let k=0;
-    for(let dy=-Math.floor(TH/2); dy<Math.ceil(TH/2); dy++){
-      for(let dx=-Math.floor(TW/2); dx<Math.ceil(TW/2); dx++){
-        const x = clamp(cx+dx, 0, LW-1);
-        const y = clamp(cy+dy, 0, LH-1);
-        const idx = (y*LW+x)*4;
-        t[k++] = (data[idx]+data[idx+1]+data[idx+2])/3;
-      }
-    }
-    return t;
-  }
-
-  function clamp(v,a,b){return v<a?a:(v>b?b:v);}
-
-  // ---------- tracking ----------
-  function trackAll(){
-    procCtx.drawImage(video, 0, 0, LW, LH);
-    const data = procCtx.getImageData(0,0,LW,LH).data;
-    const now = performance.now();
-
-    players.forEach(p=>{
-      if(!p.active || !p.pos) return;
-      let best = {sad: Infinity, x:p.pos.x, y:p.pos.y};
-      for(let dy=-SEARCH; dy<=SEARCH; dy++){
-        for(let dx=-SEARCH; dx<=SEARCH; dx++){
-          const cx = clamp(p.pos.x+dx, 0, LW-1);
-          const cy = clamp(p.pos.y+dy, 0, LH-1);
-          const cand = extractTemplate(data, cx, cy);
-          let sad=0;
-          for(let k=0;k<cand.length;k++) sad += Math.abs(cand[k]-p.template[k]);
-          if(sad<best.sad) best = {sad, x:cx, y:cy};
-        }
-      }
-      const avgDiff = best.sad/(TW*TH);
-      if(avgDiff <= LOSS_THRESH){
-        const dx = best.x-p.pos.x, dy = best.y-p.pos.y;
-        const moved = Math.hypot(dx,dy);
-        if(moved>0.4){
-          p.distance += moved;
-          p.lastMoveT = now;
-        }
-        p.pos = {x:best.x,y:best.y};
-        // adaptive template blend
-        const cand = extractTemplate(data, best.x, best.y);
-        for(let k=0;k<p.template.length;k++) p.template[k] = p.template[k]*0.88 + cand[k]*0.12;
-        p.lostStreak = 0;
-        p.lost = false;
-        p.history.push({x:best.x,y:best.y,t:now});
-        if(p.history.length>50) p.history.shift();
-      }else{
-        p.lostStreak++;
-        if(p.lostStreak>LOST_LIMIT) p.lost = true;
-      }
-      // speed = movement over last ~0.8s
-      const cutoff = now-800;
-      const recent = p.history.filter(h=>h.t>=cutoff);
-      if(recent.length>1){
-        let d=0;
-        for(let i=1;i<recent.length;i++) d += Math.hypot(recent[i].x-recent[i-1].x, recent[i].y-recent[i-1].y);
-        p.speed = d/((now-recent[0].t)/1000 || 1);
-      }else{
-        p.speed = 0;
-      }
-    });
-  }
-
-  // ---------- draw ----------
-  function draw(){
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    players.forEach(p=>{
-      if(!p.active || !p.pos) return;
-      // trail
-      ctx.beginPath();
-      p.history.forEach((h,i)=>{
-        const cx = h.x/LW*canvas.width, cy = h.y/LH*canvas.height;
-        if(i===0) ctx.moveTo(cx,cy); else ctx.lineTo(cx,cy);
-      });
-      ctx.strokeStyle = p.color+'80';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      const cx = p.pos.x/LW*canvas.width, cy = p.pos.y/LH*canvas.height;
-      const r = canvas.width*0.028;
-      ctx.beginPath();
-      ctx.arc(cx,cy,r,0,Math.PI*2);
-      ctx.fillStyle = p.lost ? 'transparent' : p.color;
-      ctx.fill();
-      ctx.lineWidth = p.lost ? 2 : 0;
-      if(p.lost){ ctx.strokeStyle = p.color; ctx.setLineDash([4,4]); ctx.stroke(); ctx.setLineDash([]); }
-      ctx.fillStyle = p.lost ? p.color : '#12140f';
-      ctx.font = 'bold '+(r*1.1)+'px Arial';
-      ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillText(String(p.id+1), cx, cy+1);
-    });
-  }
-
-  let lastTrackT = 0;
-  function loop(t){
-    if(!running) return;
-    if(!lastTrackT || t-lastTrackT>60){ // ~15hz tracking analysis
-      trackAll();
-      renderStats();
-      lastTrackT = t;
-    }
-    draw();
-    requestAnimationFrame(loop);
-  }
-
-  // ---------- player cards ----------
-  function renderPlayers(){
-    playersEl.innerHTML = players.map(p=>`
-      <div class="card ${p.lost?'lost':''}" data-i="${p.id}">
-        <button class="retag" data-retag="${p.id}">Re-tag</button>
-        <div class="cardhead">
-          <div class="swatch" style="background:${p.color}">${p.id+1}</div>
-          <input value="${p.name}" data-name="${p.id}" maxlength="16">
-        </div>
-        ${p.lost ? '<div class="lostflag">TRACKING LOST — re-tag to fix</div>' : ''}
-        <div class="statrow">
-          <div><div class="label">Movement</div><div class="value">${p.distance.toFixed(0)}</div></div>
-          <div style="text-align:right;"><div class="label">Speed</div><div class="value">${p.speed.toFixed(1)}</div></div>
-        </div>
-        <div class="scoreline">
-          <button class="smallbtn" data-score="${p.id}" data-delta="-1">−</button>
-          <div class="score">${p.score}</div>
-          <button class="smallbtn" data-score="${p.id}" data-delta="1">+</button>
-        </div>
-        <div class="foulrow">
-          <select class="foulselect" data-foulselect="${p.id}">
-            ${FOULS.map(f=>`<option>${f}</option>`).join('')}
-          </select>
-          <button class="logfoul" data-logfoul="${p.id}">+Foul (${p.fouls})</button>
-        </div>
-      </div>
-    `).join('');
-    bindPlayerEvents();
-  }
-
-  function renderStats(){
-    // update only numeric bits without full re-render (avoid input focus loss)
-    players.forEach(p=>{
-      const card = playersEl.querySelector(`.card[data-i="${p.id}"]`);
-      if(!card) return;
-      card.classList.toggle('lost', p.lost);
-      const vals = card.querySelectorAll('.value');
-      if(vals[0]) vals[0].textContent = p.distance.toFixed(0);
-      if(vals[1]) vals[1].textContent = p.speed.toFixed(1);
-      const flag = card.querySelector('.lostflag');
-      if(p.lost && !flag){
-        const head = card.querySelector('.cardhead');
-        const div = document.createElement('div');
-        div.className='lostflag'; div.textContent='TRACKING LOST — re-tag to fix';
-        head.insertAdjacentElement('afterend', div);
-      }else if(!p.lost && flag){
-        flag.remove();
-      }
-    });
-  }
-
-  function bindPlayerEvents(){
-    playersEl.querySelectorAll('[data-name]').forEach(inp=>{
-      inp.addEventListener('input', e=>{
-        players[+e.target.dataset.name].name = e.target.value;
-      });
-    });
-    playersEl.querySelectorAll('[data-retag]').forEach(btn=>{
-      btn.addEventListener('click', e=>{
-        const i = +e.target.dataset.retag;
-        selecting = i;
-        hintText.textContent = 'Tap Player ' + (i+1) + ' on the video';
-      });
-    });
-    playersEl.querySelectorAll('[data-score]').forEach(btn=>{
-      btn.addEventListener('click', e=>{
-        const i = +e.target.dataset.score, d = +e.target.dataset.delta;
-        const p = players[i];
-        p.score = Math.max(0, p.score+d);
-        addLog(p, d>0 ? 'Point' : 'Point removed', p.color);
-        renderPlayers();
-      });
-    });
-    playersEl.querySelectorAll('[data-logfoul]').forEach(btn=>{
-      btn.addEventListener('click', e=>{
-        const i = +e.target.dataset.logfoul;
-        const p = players[i];
-        const sel = playersEl.querySelector(`[data-foulselect="${i}"]`);
-        p.fouls++;
-        addLog(p, sel.value, '#C0392B');
-        renderPlayers();
-      });
-    });
-  }
-
-  // ---------- match log ----------
-  let logEntries = [];
-  function addLog(p, label, dotColor){
-    logEntries.unshift({time: clockText(), name:p.name, label, dotColor});
-    renderLog();
-  }
-  function renderLog(){
-    if(logEntries.length===0){
-      logEl.innerHTML = '<div class="logempty">No events yet — score and foul calls will show up here.</div>';
-      return;
-    }
-    logEl.innerHTML = logEntries.map(e=>`
-      <div class="logrow">
-        <div class="logtime">${e.time}</div>
-        <div class="logdot" style="background:${e.dotColor}"></div>
-        <div><b>${e.name}</b> — ${e.label}</div>
-      </div>
-    `).join('');
-  }
-
-  document.getElementById('exportLog').addEventListener('click', ()=>{
-    const lines = logEntries.slice().reverse().map(e=>`${e.time}  ${e.name}  ${e.label}`);
-    const blob = new Blob([lines.join('\n')||'No events logged.'], {type:'text/plain'});
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'wallball-match-log.txt';
-    a.click();
-  });
-
-  document.getElementById('newMatch').addEventListener('click', ()=>{
-    players.forEach(p=>{p.score=0;p.fouls=0;p.distance=0;p.speed=0;});
-    logEntries = [];
-    renderLog();
-    renderPlayers();
-    resetClock();
-  });
-
-  // ---------- match clock ----------
-  let clockRunning=false, clockStart=0, clockElapsed=0;
-  const clockEl = document.getElementById('clock');
-  document.getElementById('clockToggle').addEventListener('click', (e)=>{
-    if(clockRunning){
-      clockElapsed += performance.now()-clockStart;
-      clockRunning=false; e.target.textContent='Start';
-    }else{
-      clockStart = performance.now();
-      clockRunning=true; e.target.textContent='Pause';
-    }
-  });
-  document.getElementById('clockReset').addEventListener('click', resetClock);
-  function resetClock(){
-    clockRunning=false; clockElapsed=0;
-    document.getElementById('clockToggle').textContent='Start';
-    clockEl.textContent='00:00';
-  }
-  function clockText(){ return clockEl.textContent; }
-  setInterval(()=>{
-    let ms = clockElapsed + (clockRunning ? performance.now()-clockStart : 0);
-    const totalSec = Math.floor(ms/1000);
-    const m = String(Math.floor(totalSec/60)).padStart(2,'0');
-    const s = String(totalSec%60).padStart(2,'0');
-    clockEl.textContent = `${m}:${s}`;
-  }, 250);
-
-  // ---------- recording ----------
-  let mediaRecorder=null, chunks=[], recStart=0;
-  const recBtn = document.getElementById('recBtn');
-  const recIndicator = document.getElementById('recIndicator');
-  recBtn.addEventListener('click', ()=>{
-    if(!running){ hintText.textContent='Enable the camera first'; return; }
-    if(mediaRecorder && mediaRecorder.state==='recording'){
-      mediaRecorder.stop();
-    }else{
-      startRecording();
-    }
-  });
-  function startRecording(){
-    chunks=[];
-    const canvasStream = canvas.captureStream(25);
-    let opts = {mimeType:'video/webm;codecs=vp9'};
-    if(!MediaRecorder.isTypeSupported(opts.mimeType)) opts = {mimeType:'video/webm'};
-    mediaRecorder = new MediaRecorder(canvasStream, opts);
-    mediaRecorder.ondataavailable = e=>{ if(e.data.size) chunks.push(e.data); };
-    mediaRecorder.onstop = ()=>{
-      const blob = new Blob(chunks, {type:'video/webm'});
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'wallball-replay.webm';
-      a.click();
-      recBtn.textContent = '● Record replay';
-      recIndicator.style.display='none';
-    };
-    mediaRecorder.start();
-    recStart = performance.now();
-    recBtn.textContent = '■ Stop & save';
-    recIndicator.style.display='flex';
-  }
-  setInterval(()=>{
-    if(mediaRecorder && mediaRecorder.state==='recording'){
-      const s = Math.floor((performance.now()-recStart)/1000);
-      document.getElementById('recTime').textContent = Math.floor(s/60)+':'+String(s%60).padStart(2,'0');
-    }
-  }, 500);
-
-  renderPlayers();
 })();
 </script>
 </body>
